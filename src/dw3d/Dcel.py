@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 import math
 import pickle
 import numpy as np 
-from dw3d.dcel.Curvature import compute_curvature_interfaces
-from dw3d.dcel.Geometry import compute_areas_faces,compute_areas_cells,compute_angles_tri,compute_angles_tri_and_quad,compute_volume_cells,compute_areas_interfaces,compute_volume_derivative_autodiff_dict,compute_area_derivative_dict, compute_length_trijunctions
+from dw3d.Curvature import compute_curvature_interfaces
+from dw3d.Geometry import compute_areas_faces,compute_areas_cells,compute_angles_tri,compute_angles_tri_and_quad,compute_volume_cells,compute_areas_interfaces,compute_volume_derivative_autodiff_dict,compute_area_derivative_dict, compute_length_trijunctions
 import networkx
 
 def separate_faces_dict(Faces,n_towers=10): 

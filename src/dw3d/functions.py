@@ -3,7 +3,7 @@ from dw3d.Graph_functions import Delaunay_Graph
 from dw3d.Geometric_utilities import build_triangulation, interpolate_image
 from dw3d.Mesh_utilities import write_mesh_text,write_mesh_bin, Clean_mesh_from_seg, plot_cells_polyscope,compute_seeds_idx_from_voxel_coords,retrieve_border_tetra_with_index_map, separate_faces_dict, renormalize_verts
 from dw3d.Mask_reconstruction import reconstruct_mask_from_dict
-from dw3d.dcel.Dcel import DCEL_Data
+from dw3d.Dcel import DCEL_Data
 
 from skimage.segmentation import expand_labels
 from time import time
