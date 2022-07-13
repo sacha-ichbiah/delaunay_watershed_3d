@@ -1,4 +1,4 @@
-# Delaunay-Watershed 2D
+# Delaunay-Watershed 3D
 
 <img src="Figures_readme/Figure_logo_white_arrow.png" alt="drawing" width="300"/>
 
@@ -14,23 +14,17 @@ The algorithm takes as input segmentation masks and return multimaterial polygon
 The original raw images can be inserted optionaly for visualisation but are not used for the reconstruction.
 
 ---
-## Installation
 
-`pip install delaunay-watershed-2d==0.1.0`
+## Examples
 
----
-## 2D Library
+**Geometrical reconstruction of P.Mammilata Embryo** (Data from [this paper](https://www.science.org/doi/10.1126/science.aar5663))
 
+![](Figures_readme/DW_3d.png "Title")
 
-**Geometrical reconstruction of C.Elegans Embryo** (Data from [cShaper](cao13jf.github.io/cshaperpage/))
-![](Figures_readme/DW_2d_celegans.png "Title")
+**Geometrical reconstruction of Cell Nuclei**  (Data from [Stardist](https://github.com/stardist/stardist))
 
+![](Figures_readme/DW_3d_nuclei.png "Title")
 
-**Geometrical reconstruction of Cell Nuclei** (Data from [dsb2018](https://www.kaggle.com/c/data-science-bowl-2018))
-![](Figures_readme/DW_2d_nucleus.png "Title")
-
-
----
 
 
 
