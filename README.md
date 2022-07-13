@@ -13,6 +13,13 @@ Introductory notebooks with precise use case are provided for 2D and 3D librarie
 The algorithm takes as input segmentation masks and return multimaterial polygonal lines (2D) or triangle meshes (3D).
 The original raw images can be inserted optionaly for visualisation but are not used for the reconstruction.
 
+
+---
+## Installation
+
+`pip install delaunay-watershed-3d`
+
+
 ---
 
 ## Examples
@@ -25,6 +32,7 @@ The original raw images can be inserted optionaly for visualisation but are not 
 
 ![](Figures_readme/DW_3d_nuclei.png "Title")
 
+---
 
 
 
