@@ -2,6 +2,9 @@
 import numpy as np 
 import scipy.sparse as sp
 import robust_laplacian
+import trimesh
+
+#TODO: IMPLEMENT THE EDGE_BASED CURVATURE FORMULA
 
 def find_key_multiplier(num_points): 
     key_multiplier = 1
@@ -89,6 +92,13 @@ def compute_laplacian_robust(Mesh):
     norm = (1.5*inv_areas).reshape(-1,1)
     return(-Laplacian*norm,inv_areas)
 
+def compute_gaussian_curvature_vertices(Mesh):
+    mesh_trimesh =trimesh.Trimesh(vertices=Mesh.v,
+                  faces = Mesh.f[:,:3]) 
+    G = trimesh.curvature.discrete_gaussian_curvature_measure(mesh_trimesh, Mesh.v,0.)
+    return(G)
+
+    
 def compute_curvature_vertices_cotan(Mesh): 
     verts = Mesh.v
     faces = Mesh.f[:,[0,1,2]]
@@ -263,15 +273,63 @@ def laplacian_cot(verts,faces):
 
 
 
-def compute_areas(faces,verts): 
-    Pos = verts[faces]
-    Sides = Pos-Pos[:,[2,0,1]]
-    Lengths_sides = np.linalg.norm(Sides,axis = 2)
-    Half_perimeters = np.sum(Lengths_sides,axis=1)/2
 
-    Diffs = np.array([Half_perimeters]*3).transpose() - Lengths_sides
-    Areas = (Half_perimeters*Diffs[:,0]*Diffs[:,1]*Diffs[:,2])**(0.5)
-    return(Areas)
+
+
+
+
+
+
+
+
+#from https://jekel.me/2015/Least-Squares-Sphere-Fit/
+
+def sphereFit(verts):
+    #   Assemble the A matrix
+    spX = verts[:,0]
+    spY = verts[:,1]
+    spZ = verts[:,2]
+    A = np.zeros((len(spX),4))
+    A[:,0] = spX*2
+    A[:,1] = spY*2
+    A[:,2] = spZ*2
+    A[:,3] = 1
+
+    #   Assemble the f matrix
+    f = np.zeros((len(spX),1))
+    f[:,0] = (spX*spX) + (spY*spY) + (spZ*spZ)
+    C, residules, rank, singval = np.linalg.lstsq(A,f)
+    print(residules/len(verts))
+    #   solve for the radius
+    t = (C[0]*C[0])+(C[1]*C[1])+(C[2]*C[2])+C[3]
+    radius = math.sqrt(t)
+
+    return radius, np.array([C[0], C[1], C[2]])[:,0]
+def sphereFit_residue(verts):
+    #   Assemble the A matrix
+    spX = verts[:,0]
+    spY = verts[:,1]
+    spZ = verts[:,2]
+    A = np.zeros((len(spX),4))
+    A[:,0] = spX*2
+    A[:,1] = spY*2
+    A[:,2] = spZ*2
+    A[:,3] = 1
+
+    #   Assemble the f matrix
+    f = np.zeros((len(spX),1))
+    f[:,0] = (spX*spX) + (spY*spY) + (spZ*spZ)
+    C, residules, rank, singval = np.linalg.lstsq(A,f)
+    if len(residules)>0: 
+        return(residules[0]/len(verts))
+    else: return(0)
+    
+def compute_sphere_fit_residues_dict(G):
+    Sphere_fit_residues_faces = {}
+    for key in G.edges.keys():
+        vn = G.edges[key]['verts']
+        Sphere_fit_residues_faces[key] = sphereFit_residue(vn)
+    return(Sphere_fit_residues_faces)
 
 
 
@@ -290,291 +348,16 @@ def compute_areas_interfaces(Mesh):
         Interfaces_areas[(a,b)]=Table+Areas[i]
     return(Interfaces_areas)
 
+def compute_areas(faces,verts): 
+    Pos = verts[faces]
+    Sides = Pos-Pos[:,[2,0,1]]
+    Lengths_sides = np.linalg.norm(Sides,axis = 2)
+    Half_perimeters = np.sum(Lengths_sides,axis=1)/2
+
+    Diffs = np.array([Half_perimeters]*3).transpose() - Lengths_sides
+    Areas = (Half_perimeters*Diffs[:,0]*Diffs[:,1]*Diffs[:,2])**(0.5)
+    return(Areas)
 
 
 
 
-
-
-
-
-
-"""
-HUGE FUNCTION
-"""
-def compute_curvature_interfaces_cotan(Faces,Verts) : 
-
-    #5 times faster than the iterative version. More principled. 
-
-    dict_curvatures = {}
-    #We start from an oriented mesh
-    Faces[:,[0,1,2]]=np.sort(Faces[:,[0,1,2]],axis=1)
-    Faces[:,[3,4]]=np.sort(Faces[:,[3,4]],axis=1)
-    Faces_raw = Faces[:,[0,1,2]]
-
-    Edges = np.vstack((Faces[:,[0,1,3,4]],Faces[:,[1,2,3,4]],Faces[:,[2,0,3,4]]))
-    key_mult = find_key_multiplier(np.amax(Edges))
-    Keys = Edges[:,0]*key_mult + Edges[:,1]
-    Mapping = dict(zip(Keys,np.arange(len(Keys))))
-
-    Instances_edges = {}
-    Occupancy = np.zeros(len(Keys))
-    for i,key in enumerate(Keys):
-        if Occupancy[Mapping[key]]==0 : 
-            Instances_edges[key]=set(Edges[i][2:])
-            Occupancy[Mapping[key]]=1
-        else : 
-            Instances_edges[key]=Instances_edges[key].union(set(Edges[i][2:]))
-
-    Edges_implied_in_trijunctions_index = []  
-    for key in Instances_edges : 
-        if len(Instances_edges[key])>2 : 
-            Edges_implied_in_trijunctions_index.append(Mapping[key])
-
-    Verts_implied_in_trijunctions = np.unique(Edges[Edges_implied_in_trijunctions_index][:,[0,1]])
-    Table_vert_implied_in_trijunction = np.zeros(len(Verts))
-    Table_vert_implied_in_trijunction[Verts_implied_in_trijunctions]=1
-
-
-    key_mult = find_key_multiplier(np.amax(Faces[:,[3,4]]))
-    Keys = Faces[:,3]*key_mult + Faces[:,4]
-    keys, index = np.unique(Keys,return_index=True)
-    Interfaces = Faces[:,[3,4]][index]
-    #Faces with interface_key instead of a pair of numbers
-    Faces_with_interface_key = np.hstack((Faces[:,[0,1,2]],Keys.reshape(-1,1)))
-
-
-
-    L, inv_areas=laplacian_cot(Verts,Faces[:,[0,1,2]])
-    Sum_cols = np.array(L.sum(axis=1))
-    first_term = L@Verts
-    second_term = Verts*Sum_cols
-    Laplacian = (first_term-second_term)/2
-
-    idx_0 = np.array([np.arange(len(Faces))]*3).flatten()
-    idx_1 = Faces[:,:3].transpose().flatten()
-    M = sp.coo_matrix((np.ones(len(idx_0)),(idx_1,idx_0)),shape=(len(Verts),len(Faces)))
-    Faces_areas = compute_areas(Faces[:,:3],Verts)
-    Vertex_areas = M@Faces_areas
-    Vertex_areas[Vertex_areas==0]+=1
-    H = np.linalg.norm(Laplacian,axis=1)/(2)/(Vertex_areas/3)
-    for i,key in enumerate(keys) : 
-        faces_of_interface = Faces_raw[Faces_with_interface_key[:,3]==key]
-        verts_of_interface = np.unique(faces_of_interface)
-        verts_considered = verts_of_interface[Table_vert_implied_in_trijunction[verts_of_interface]==0]
-        if len(verts_considered)>0 :
-            H_c = H[verts_considered]       
-            vertex_area_c = Vertex_areas[verts_considered]
-            #print(,np.mean(H[verts_considered]),np.sum(H_c*vertex_area_c)/np.sum(vertex_area_c))
-            mean_H = np.sum(H_c*vertex_area_c)/np.sum(vertex_area_c)
-            dict_curvatures[tuple(Interfaces[i])]=mean_H
-            
-    return(dict_curvatures)
-
-
-def compute_curvature_interfaces_iteration(Faces,Verts):
-
-    
-    ##important : we do not do the mean of H but the weighted man because otherwise we end up with something too sensitive
-
-    dict_curvatures = {}
-    #We sort the faces labels ([v1,v2,v3,a,b] with a<b and v1<v2<v3)
-    Faces[:,[0,1,2]]=np.sort(Faces[:,[0,1,2]],axis=1)
-    Faces[:,[3,4]]=np.sort(Faces[:,[3,4]],axis=1)
-    
-    Edges = np.vstack((Faces[:,[0,1,3,4]],Faces[:,[1,2,3,4]],Faces[:,[2,0,3,4]]))
-    key_mult = find_key_multiplier(np.amax(Edges))
-    Keys = Edges[:,0]*key_mult + Edges[:,1]
-    Mapping = dict(zip(Keys,np.arange(len(Keys))))
-    
-    Instances_edges = {}
-    Occupancy = np.zeros(len(Keys))
-
-
-    for i,key in enumerate(Keys):
-        if Occupancy[Mapping[key]]==0 : 
-            Instances_edges[key]=set(Edges[i][2:])
-            Occupancy[Mapping[key]]=1
-        else : 
-            Instances_edges[key]=Instances_edges[key].union(set(Edges[i][2:]))
-
-    Edges_implied_in_trijunctions_index = []  
-    for key in Instances_edges : 
-        if len(Instances_edges[key])>2 : 
-            Edges_implied_in_trijunctions_index.append(Mapping[key])
-
-    Verts_implied_in_trijunctions = np.unique(Edges[Edges_implied_in_trijunctions_index][:,[0,1]])
-    Table_vert_implied_in_trijunction = np.zeros(len(Verts))
-    Table_vert_implied_in_trijunction[Verts_implied_in_trijunctions]=1
-
-    
-    #We find on which interface each face is located
-    key_mult = find_key_multiplier(np.amax(Faces[:,[3,4]]))
-    Keys = Faces[:,3]*key_mult + Faces[:,4]
-    keys, index = np.unique(Keys,return_index=True)
-    Interfaces = Faces[:,[3,4]][index]
-    #Faces with interface_key instead of a pair of numbers
-    Faces_with_interface_key = np.hstack((Faces[:,[0,1,2]],Keys.reshape(-1,1)))
-    #Area of each face
-    Faces_area = compute_areas(Faces[:,[0,1,2]],Verts)
-
-
-    Occupancy = np.zeros(len(Verts))
-    dict_faces_at_each_vertex={}
-    for i,face in enumerate(Faces) : 
-        for index in face[:3] : 
-            if Occupancy[index]==0 : 
-                dict_faces_at_each_vertex[index]=[i]
-                Occupancy[index]=1
-            else : 
-                dict_faces_at_each_vertex[index].append(i)
-
-    Faces_raw = Faces[:,[0,1,2]]
-    Pos = Verts[Faces_raw]
-    Sides = Pos-Pos[:,[1,2,0]]
-    Norm = np.linalg.norm(Sides,axis=2)
-    Sides/=np.array([Norm]*3).transpose(1,2,0)
-
-    Angle_0 = np.arccos(np.sum(np.multiply(Sides[:,0],Sides[:,2]),axis=1))
-    Angle_1 = np.arccos(np.sum(np.multiply(Sides[:,0],Sides[:,1]),axis=1))
-    Angle_2 = np.arccos(np.sum(np.multiply(Sides[:,1],Sides[:,2]),axis=1))
-    Angles = np.stack([Angle_0,Angle_1,Angle_2]).transpose()
-
-
-    dict_curvatures = {}
-    for i,key in enumerate(keys) :
-        interface = Interfaces[i]
-        faces_of_interface = Faces_raw[Faces_with_interface_key[:,3]==key]
-        verts_of_interface = np.unique(faces_of_interface)
-        verts_considered = verts_of_interface[Table_vert_implied_in_trijunction[verts_of_interface]==0]
-        
-        Vertex_areas = np.zeros(len(verts_considered))
-        Laplacians_vertices_considered = np.zeros((len(verts_considered),3))
-
-        for i,vert in enumerate(verts_considered) : 
-            # Maintenant on veut relier les faces au vert considéré
-            faces_idx = dict_faces_at_each_vertex[vert]
-            Vertex_areas[i] = np.sum(Faces_area[faces_idx])
-
-            ### COTAN FORMULA
-            Laplacian=0
-            for face_idx in faces_idx : 
-                face = Faces_raw[face_idx]
-                angles = Angles[face_idx]
-                a,b,c=face
-                Oa,Ob,Oc = angles
-
-                if a == vert : 
-                    Laplacian +=cot(Ob)*(Verts[c]-Verts[vert])
-                    Laplacian +=cot(Oc)*(Verts[b]-Verts[vert])
-
-                if b == vert : 
-                    Laplacian +=cot(Oa)*(Verts[c]-Verts[vert])
-                    Laplacian +=cot(Oc)*(Verts[a]-Verts[vert])
-
-                if c == vert : 
-                    Laplacian +=cot(Oa)*(Verts[b]-Verts[vert])
-                    Laplacian +=cot(Ob)*(Verts[a]-Verts[vert])
-
-            Laplacians_vertices_considered[i]=Laplacian.copy()
-        Laplacians_vertices_considered/=2
-        H = (np.linalg.norm(Laplacians_vertices_considered,axis=1)/2)/(Vertex_areas/3)
-        if len(H)>0 :     
-            mean_H = np.sum(H*Vertex_areas)/(np.sum(Vertex_areas))
-            dict_curvatures[tuple(interface)]=mean_H
-    return(dict_curvatures)
-
-
-
-
-
-
-
-
-
-"""
-def compute_curvature_interfaces(Mesh,laplacian = "robust"): 
-    Interfaces={}
-    Interfaces_n_elemts={}
-    if laplacian =="robust" : 
-        H = compute_curvature_vertices_robust_laplacian(Mesh)
-    elif laplacian =="cotan" : 
-        H = compute_curvature_vertices_cotan(Mesh)
-    for edge in Mesh.half_edges : 
-        #pass trijunctions
-        if len(edge.twin)>1 : 
-            continue
-        materials = (edge.incident_face.material_1,edge.incident_face.material_2)
-        interface_key = (min(materials),max(materials))
-        curvature = H[edge.origin.key]+H[edge.destination.key]
-        Interfaces[interface_key]=Interfaces.get(interface_key,0)+curvature
-        Interfaces_n_elemts[interface_key]=Interfaces_n_elemts.get(interface_key,0)+2
-    Interfaces_curvatures_mean = {}
-    for key in Interfaces:
-        Interfaces_curvatures_mean[key]=Interfaces[key]/Interfaces_n_elemts[key]
-    return(Interfaces_curvatures_mean)
-#compute_curvature_interfaces(Mesh): """
-"""
-def compute_curvature_interfaces(Mesh,laplacian = "robust",weighted=True): 
-    Interfaces={}
-    Interfaces_weights={}
-    if laplacian =="robust" : 
-        H,inv_areas,_ = compute_curvature_vertices_robust_laplacian(Mesh)
-    elif laplacian =="cotan" : 
-        H,inv_areas,_ = compute_curvature_vertices_cotan(Mesh)
-    for edge in Mesh.half_edges : 
-        #pass trijunctions
-        if len(edge.twin)>1 : 
-            continue
-        materials = (edge.incident_face.material_1,edge.incident_face.material_2)
-        interface_key = (min(materials),max(materials))
-        
-        if weighted: 
-            curvature = H[edge.origin.key]/inv_areas[edge.origin.key]
-            curvature+= H[edge.destination.key]/inv_areas[edge.destination.key]
-
-            Interfaces[interface_key]=Interfaces.get(interface_key,0)+curvature
-            Interfaces_weights[interface_key]=Interfaces_weights.get(interface_key,0)+ 1/inv_areas[edge.origin.key] + 1/inv_areas[edge.destination.key]
-        else : 
-            curvature = H[edge.origin.key]+H[edge.destination.key]
-            Interfaces[interface_key]=Interfaces.get(interface_key,0)+curvature
-            Interfaces_weights[interface_key]=Interfaces_weights.get(interface_key,0)+ 2
-            
-    Interfaces_curvatures_mean = {}
-    for key in Interfaces:
-        Interfaces_curvatures_mean[key]=Interfaces[key]/Interfaces_weights[key]
-    return(Interfaces_curvatures_mean)
-
-
-def compute_curvature_vectors_interfaces(Mesh,laplacian = "robust",weighted=True): 
-    Interfaces={}
-    Interfaces_weights={}
-    if laplacian =="robust" : 
-        H,inv_areas,L = compute_curvature_vertices_robust_laplacian(Mesh)
-    elif laplacian =="cotan" : 
-        H,inv_areas,L = compute_curvature_vertices_cotan(Mesh)
-
-    for edge in Mesh.half_edges : 
-        #pass trijunctions
-        if len(edge.twin)>1 : 
-            continue
-        materials = (edge.incident_face.material_1,edge.incident_face.material_2)
-        interface_key = (min(materials),max(materials))
-        
-        if weighted: 
-            curvature_vector = L[edge.origin.key]/inv_areas[edge.origin.key]
-            curvature_vector+= L[edge.destination.key]/inv_areas[edge.destination.key]
-
-            Interfaces[interface_key]=Interfaces.get(interface_key,0)+curvature_vector
-            Interfaces_weights[interface_key]=Interfaces_weights.get(interface_key,0)+ 1/inv_areas[edge.origin.key] + 1/inv_areas[edge.destination.key]
-        else : 
-            curvature_vector = L[edge.origin.key]+L[edge.destination.key]
-            Interfaces[interface_key]=Interfaces.get(interface_key,0)+curvature_vector
-            Interfaces_weights[interface_key]=Interfaces_weights.get(interface_key,0)+ 2
-            
-    Interfaces_curvatures_mean = {}
-    for key in Interfaces:
-        Interfaces_curvatures_mean[key]=Interfaces[key]/Interfaces_weights[key]
-    return(Interfaces_curvatures_mean)
-
-"""

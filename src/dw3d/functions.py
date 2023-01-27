@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 
 class geometry_reconstruction_3d():
-    def __init__(self,labels,min_dist = 4, expansion_labels = 0,original_image = None,print_info = False,mode='torch'):
+    def __init__(self,labels,min_dist = 5, expansion_labels = 0,original_image = None,print_info = False,mode='torch'):
         self.original_image = original_image
         if expansion_labels>0:
             self.labels= expand_labels(labels,expansion_labels)

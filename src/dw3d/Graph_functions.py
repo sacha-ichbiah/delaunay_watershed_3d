@@ -1,7 +1,6 @@
 from time import time 
 import numpy as np 
 import networkx
-from time import time
 
 
 def give_faces_table(Tetrahedrons):

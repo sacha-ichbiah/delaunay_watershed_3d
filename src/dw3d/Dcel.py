@@ -1,13 +1,15 @@
 #Sacha Ichbiah, Sept 2021
-"""Module dedicated to the representation of a DCEL graph."""
-# Define the structures of a double connected edge list (https://en.wikipedia.org/wiki/Doubly_connected_edge_list)
+"""Module dedicated to the computation of geometrical quantities on a 3D Mesh."""
+
 from dataclasses import dataclass, field
 import math
 import pickle
 import numpy as np 
 from dw3d.Curvature import compute_curvature_interfaces
-from dw3d.Geometry import compute_areas_faces,compute_areas_cells,compute_angles_tri,compute_angles_tri_and_quad,compute_volume_cells,compute_areas_interfaces,compute_volume_derivative_autodiff_dict,compute_area_derivative_dict, compute_length_trijunctions
+from dw3d.Geometry import compute_areas_faces,compute_areas_cells,compute_angles_tri,compute_volume_cells, compute_volume_derivative_dict, compute_areas_interfaces,compute_area_derivative_dict, compute_length_trijunctions
 import networkx
+
+
 
 def separate_faces_dict(Faces,n_towers=10): 
     n_towers = np.amax(Faces[:,[3,4]])+1
@@ -336,41 +338,6 @@ class DCEL_Data:
 
     def compute_areas_faces(self):
         compute_areas_faces(self)
-    
-    def compute_angles_tri(self,unique=True):
-        return(compute_angles_tri(self,unique=unique))
-
-    def compute_angles_tri_and_quad(self,unique=True):
-        return(compute_angles_tri_and_quad(self,unique=unique))
-
-    def compute_curvatures_interfaces(self,laplacian="robust",weighted=True):
-        #"robust" or "cotan"
-        return(compute_curvature_interfaces(self,laplacian=laplacian,weighted=weighted))
-
-    def compute_centroids_cells(self): 
-        self.centroids = {}
-        separated_faces = separate_faces_dict(self.f)
-        for i in separated_faces.keys():
-            self.centroids[i]=np.mean(self.v[np.unique(separated_faces[i]).astype(int)],axis=0)
-        
-    def mark_trijunctional_vertices(self,return_list=False): 
-        return(mark_trijunctional_vertices(self,return_list))
-        
-
-    def compute_areas_cells(self):
-        return(compute_areas_cells(self))
-
-    def compute_areas_interfaces(self): 
-        return(compute_areas_interfaces(self))
-    
-    def compute_area_derivatives(self): 
-        return(compute_area_derivative_dict(self))
-
-    def compute_volumes_cells(self): 
-        return(compute_volume_cells(self))
-    
-    def compute_volume_derivatives(self):
-        return(compute_volume_derivative_autodiff_dict(self))
 
     def compute_vertex_normals(self): 
         return(compute_vertex_normals(self.v,self.f))
@@ -384,8 +351,41 @@ class DCEL_Data:
     def find_trijunctional_edges(self):
         return(find_trijunctional_edges(self))
 
+    def compute_centroids_cells(self): 
+        self.centroids = {}
+        separated_faces = separate_faces_dict(self.f)
+        for i in separated_faces.keys():
+            self.centroids[i]=np.mean(self.v[np.unique(separated_faces[i]).astype(int)],axis=0)
+        
+    def mark_trijunctional_vertices(self,return_list=False): 
+        return(mark_trijunctional_vertices(self,return_list))
+        
     def compute_length_trijunctions(self,prints=False): 
         return(compute_length_trijunctions(self,prints=False))
+
+    #TODO:  FIND AN EFFICIENT IMPLEMENTATION OF THE TRIJUNCTIONAL LENGTH DERIVATIVES
+    
+    def compute_areas_cells(self):
+        return(compute_areas_cells(self))
+
+    def compute_areas_interfaces(self): 
+        return(compute_areas_interfaces(self))
+    
+    def compute_area_derivatives(self): 
+        return(compute_area_derivative_dict(self))
+
+    def compute_volumes_cells(self): 
+        return(compute_volume_cells(self))
+    
+    def compute_volume_derivatives(self):
+        return(compute_volume_derivative_dict(self))
+
+    def compute_angles_tri(self,unique=True):
+        return(compute_angles_tri(self,unique=unique))
+
+    def compute_curvatures_interfaces(self,laplacian="robust",weighted=True):
+        #"robust" or "cotan"
+        return(compute_curvature_interfaces(self,laplacian=laplacian,weighted=weighted))
 
 
     def save(self, filename):

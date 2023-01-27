@@ -63,10 +63,10 @@ def write_mesh_text(filename, Verts, Faces):
         file.write(f'{Faces[i][0]} {Faces[i][1]} {Faces[i][2]} {Faces[i][3]} {Faces[i][4]}'+'\n')
     file.close() 
 
-def open_mesh_multitracker(filename):
-    try : 
+def open_mesh_multitracker(type_file,filename="../../../../../Dropbox/S.Ichbiah/Data/Doublet images/cells2_alpha0.25_beta1.0_delta1.0-1.6/mesh000000.rec"): 
+    if type_file == 'bin' : 
         return(read_rec_file_bin(filename))
-    except : 
+    else : 
         return(read_rec_file_num(filename))
 
 def read_rec_file_bin(filename): 
@@ -293,42 +293,23 @@ def create_coords(nx,ny,nz):
     return(Points)
 
 
-
-
-def plot_cells_polyscope(Verts,Faces,clean_before = True, clean_after = True,transparency = False,show=True,view = "Simple", scattering_coeff = 0.5):
-    
+def plot_cells_polyscope(Verts,Faces,clean_before = True, clean_after = True):
     Clusters = separate_faces_dict(Faces)
-    np.random.seed(1)
-    color_cells = {key: np.random.rand(3) for key in Clusters.keys()}
+    
     ps.init()
     
+    ps.set_ground_plane_mode("none")
     if clean_before : 
         ps.remove_all_structures()
-
-    if view == "Simple" : 
-        for key in Clusters : 
-                
-            cluster = Clusters[key]
-            ps.register_surface_mesh("Cell "+str(key), Verts, np.array(cluster),color = color_cells[key][:3], smooth_shade=False) 
-    elif view == "Scattered" : 
-        Centroid_mesh=np.mean(Verts[Faces[:,:3].astype(int)].reshape(-1,3),axis=0)
-        for key in Clusters: 
-            cluster = Clusters[key]
-            centroid_vert=np.mean(Verts[cluster].reshape(-1,3),axis=0)
-            ps_mesh = ps.register_surface_mesh("Cell " +str(key), Verts-(Centroid_mesh-centroid_vert)*(scattering_coeff),cluster,color = color_cells[key][:3])
-    
-    
-    ps.set_ground_plane_mode("none") 
-    if transparency : 
-        ps.set_transparency_mode('simple')
-    else : 
-        ps.set_transparency_mode('none')
-    
-    if show : 
-        ps.show()
+        
+    for key in sorted(Clusters.keys()):
+        cluster = Clusters[key]
+        ps.register_surface_mesh("Cell "+str(key), Verts, np.array(cluster), smooth_shade=False)
+    ps.show()
     
     if clean_after : 
         ps.remove_all_structures()
+    
 
     
 def renormalize_verts(Verts,Faces): 
@@ -341,6 +322,5 @@ def renormalize_verts(Verts,Faces):
         return([mapping[x[0]],mapping[x[1]],mapping[x[2]]])
     New_Faces = np.array(list(map(func,Faces)))
     return(Verts_used,New_Faces)
-
 
 
