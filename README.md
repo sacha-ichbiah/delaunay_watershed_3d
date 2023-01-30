@@ -31,7 +31,7 @@ import skimage.io as io
 labels = io.imread("data/Images/1.tif")
 
 ## Reconstruct a multimaterial mesh from the labels
-DW = geometry_reconstruction_2d(labels,(image, min_dist = 5, expansion_labels =0,print_info=True)
+DW = geometry_reconstruction_3d(labels, min_dist = 5, expansion_labels =0,print_info=True)
 DW.plot_cells_polyscope()
 v = DW.plot_in_napari(add_mesh=True)
 
